@@ -13,16 +13,8 @@ bearer_token = "AAAAAAAAAAAAAAAAAAAAAMzfIgEAAAAAcYcSaUQX0eaJxXBw5SERUTyD610%3D1p
 # Render main page
 def index(request):
     """Site homepage"""
-
-    # DB Variables
-    num_of_tweets = Tweets.objects.all().count
-
-    context = {
-        "num_of_tweets": num_of_tweets,
-    }
-
     # Render the index.html with the data in the context dictionary
-    return render(request, "index.html", context=context)
+    return render(request, "index.html")
 
 # Render Vue Single File Components
 def component(request, name):
@@ -68,7 +60,7 @@ def search(request):
 
     # decide se verrà utilizzata l'API 1.1 (url1) o 2.0 (url2)
     url = url1
-    
+
     print(url)
 
     headers = {"Authorization": "Bearer {}".format(bearer_token)}

@@ -15,7 +15,7 @@ import django_heroku
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Quick-start development settings - unsuitable for production
@@ -27,7 +27,7 @@ SECRET_KEY = 'ktn(2td8)6p%$wxpz7t#4saowdgeeubb3&7sg6a9_b*)2fzwx7'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', '192.168.178.141', '128.116.169.110', 'localhost', '192.168.178.64']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'AppsRoot.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.path.join(BASE_DIR, "db.sqlite3"),
     }
 }
 
@@ -122,14 +122,5 @@ USE_TZ = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
-
-# Easy Maps
-INSTALLED_APPS += [
-    'easy_maps',
-]
-
-EASY_MAPS_GOOGLE_KEY = 'AIzaSyATg_isuGSCHIlJamrxAXfkFDTYhIz7ytM'
-
-EASY_MAPS_CENTER = (-41.3, 32)
 
 django_heroku.settings(locals())
