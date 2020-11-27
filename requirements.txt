@@ -14,3 +14,4 @@ urllib3==1.25.11
 psycopg2-binary>=2.8
 django-easy-maps==1.1.2
 websockets==8.1
+django-heroku
