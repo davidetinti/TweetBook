@@ -12,8 +12,8 @@ cd sito/TweetBook
 
 Il server è già configurato per l'utilizzo con Git nella cartella corrente:
 ```bash
-git pull origin '#53'
-git push origin '#53'
+git pull origin 'master'
+git push origin 'master'
 ```
 
 Per un utilizzo appropriato, evitare di utilizzare il comando push dal server.
@@ -32,8 +32,8 @@ Per prima cosa, assicurarsi di avere un'istanza Git di questa repo in una cartel
 git init 
 git remote add origin http://aminsep.disi.unibo.it/gitlab/Daveeeed/tweetbook.git
 git fetch --all
-git checkout '#53'
-git pull origin '#53'
+git checkout 'master'
+git pull origin 'master'
 ```
 
 Quindi installare Docker: https://www.docker.com/get-started

@@ -25,7 +25,11 @@
     </div>
     <!-- Settings and Logo -->
     <div class="d-flex flex-column align-items-center">
-      <button class="sidebar-button my-2" id="popover-settings">
+      <button
+        @click="$emit('changed-section', -1)"
+        class="sidebar-button my-2"
+        id="popover-settings"
+      >
         <em class="fas fa-cog"></em>
         <b-popover
           target="popover-settings"

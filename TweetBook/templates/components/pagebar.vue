@@ -10,7 +10,10 @@
     >
       <div v-if="!page.name">Nuova ricerca</div>
       <div v-else>${ page.name }</div>
-      <b-button @click="$emit('removed-page', index)" class="delete-page-button ml-4 p-0">
+      <b-button
+        @click="$emit('removed-page', index)"
+        class="delete-page-button ml-4 p-0"
+      >
         <em class="fas fa-times"></em>
       </b-button>
     </b-button>

@@ -1,36 +1,33 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="it">
-    <head>
-        <title>Tweetbook</title>
-        <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1, shrink-to-fit=no"
-        />
+<head>
+    {% load static %}
+    <title>Tweetbook</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
-        <!-- Load from static path ../static/images -->
+    <!-- Load from static path ../static/images -->
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" />
+
+    <!-- Load required Bootstrap and BootstrapVue CSS -->
+    <link type="text/css"
+          rel="stylesheet"
+          href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+    <link type="text/css"
+          rel="stylesheet"
+          href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css" />
+
+    <!-- Load from static path ../static/css -->
+    <link rel="stylesheet" href="{% static 'css/spin.css' %}" />
+
+    <!-- Load from static path ../static/script-->
+    <script type="text/javascript" src="{% static 'script/spin.umd.js' %}"></script>
+    <script type="text/javascript" src="{% static 'script/class.js' %}"></script>
+
+        <!-- Load wordfrequenter-->
         {% load static %}
-        <link rel="icon" href="{% static 'images/favicon.ico' %}" />
-
-        <!-- Load required Bootstrap and BootstrapVue CSS -->
-        <link
-            type="text/css"
-            rel="stylesheet"
-            href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css"
-        />
-        <link
-            type="text/css"
-            rel="stylesheet"
-            href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css"
-        />
-
-        <!-- Load from static path ../static/css -->
-        {% load static %}
-        <link rel="stylesheet" href="{% static 'css/spin.css' %}" />
-
-        <!-- Load from static path ../static/script-->
-        {% load static %}
-        <script src="{% static 'script/spin.umd.js' %}"></script>
+        <script src="{% static 'script/wordfrequenter.js' %}"></script>
 
         <!-- Load polyfills to support older browsers -->
         <script
@@ -38,36 +35,33 @@
             crossorigin="anonymous"
         ></script>
 
-        <!-- Load Vue followed by BootstrapVue -->
-        <!-- Developement -->
-        <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
-        <!-- Production -->
-        <!-- <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script> -->
-        <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
+    <!-- Load Vue followed by BootstrapVue -->
+    <!-- Developement -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+    <!-- Production -->
+    <!-- <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script> -->
+    <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
 
-        <!-- Load HTTP Vue Loader to use Vue Single File Components -->
-        <script src="https://unpkg.com/http-vue-loader"></script>
+    <!-- Load HTTP Vue Loader to use Vue Single File Components -->
+    <script src="https://unpkg.com/http-vue-loader"></script>
 
-        <!-- Load Font Awesome for Logos-->
-        <script
-            src="https://kit.fontawesome.com/7a541cbb9d.js"
-            crossorigin="anonymous"
-        ></script>
+    <!-- Load Font Awesome for Logos-->
+    <script src="https://kit.fontawesome.com/7a541cbb9d.js"
+            crossorigin="anonymous"></script>
 
-        <!-- Load Twitter Widget for Embedded Tweets -->
-        <script
-            async
+    <!-- Load Twitter Widget for Embedded Tweets -->
+    <script async
             src="https://platform.twitter.com/widgets.js"
-            charset="utf-8"
-        ></script>
-    </head>
+            charset="utf-8"></script>
+</head>
 
     <body>
         <div id="app">
             <dashboard></dashboard>
         </div>
 
-        <script type="text/javascript">
+    <script type="text/javascript">
+        try {
             new Vue({
                 delimiters: ["${", "}"],
                 el: "#app",
@@ -75,12 +69,22 @@
                     dashboard: httpVueLoader("component/dashboard.vue"),
                 },
             });
-        </script>
+        } catch (error) {
+            location.reload();
+        }
+    </script>
+
+        <!-- graphs libraries -->
+        <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+        <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+        <script src="https://cdn.amcharts.com/lib/4/themes/dark.js"></script>
+        <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+        <script src="https://cdn.amcharts.com/lib/4/plugins/wordCloud.js"></script>
 
         <!-- Load Google Maps API -->
         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyATg_isuGSCHIlJamrxAXfkFDTYhIz7ytM&&libraries=visualization&callback="></script>
 
-        <!-- Load JQuery -->
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    </body>
+    <!-- Load JQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</body>
 </html>

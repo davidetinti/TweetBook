@@ -6,7 +6,6 @@
         <b-button
           class="advanced-search-button ml-4 mr-2"
           id="advanced-filter-activator"
-          @click="showAdvancedSearchPopover()"
         >
           <em class="fas fa-sliders-h"></em>
         </b-button>
@@ -31,6 +30,20 @@
         </b-button>
       </div>
       <div class="d-flex align-items-center">
+        <b-button
+          v-show="page_copy.search_parameters.stream"
+          class="share-search-button mx-2"
+          id="send-mail-activator"
+        >
+          <em class="fas fa-envelope"></em>
+        </b-button>
+        <b-button
+          v-show="user"
+          class="share-search-button mx-2"
+          id="share-search-activator"
+        >
+          <em class="fas fa-share-square"></em>
+        </b-button>
         <b-button
           @click="saveSearch(page)"
           class="search-button mx-2"
@@ -67,74 +80,31 @@
     </div>
     <!-- Search done -->
     <div v-else class="search-done">
-      <div class="search-container d-flex flex-column">
+      <div class="search-tweets-container p-2">
         <div
-          class="selection-bar d-flex justify-content-between align-items-center px-3"
+          @click="showTweet(tweet.id_str)"
+          class="search-tweets-wrapper"
+          v-for="(tweet, index) in page.tweets"
+          :key="index"
         >
-          <div style="color: rgb(22, 159, 242)">
-            <div v-if="page.selected_tweets.length">
-              <strong>Selezionati (${page.selected_tweets.length})</strong>
-            </div>
-          </div>
-          <div class="d-flex">
-            <div
-              @click="page.selected_tweets = page.tweets.slice()"
-              style="color: rgb(22, 159, 242); cursor: pointer"
-            >
-              <strong>Seleziona tutti</strong>
-            </div>
-            <div class="px-2">•</div>
-            <div
-              @click="page.selected_tweets = []"
-              style="color: rgb(22, 159, 242); cursor: pointer"
-            >
-              <strong>Deseleziona tutti</strong>
-            </div>
-          </div>
-        </div>
-        <div class="search-tweets-container p-2">
-          <div
-            @click="showTweet(tweet.id_str)"
-            class="search-tweets-wrapper"
-            v-for="(tweet, index) in page.tweets"
-            :key="index"
-          >
-            <div class="d-flex px-3 py-2 justify-content-between">
-              <div class="d-flex">
-                <div class="picture-wrapper">
-                  <b-avatar
-                    class="mr-2"
-                    :src="tweet.user.profile_image_url"
-                  ></b-avatar>
-                </div>
-                <div class="content-wrapper d-flex flex-column">
-                  <div class="d-flex flex-wrap">
-                    <div class="mr-1">
-                      <strong>${tweet.user.name}</strong>
-                    </div>
-                    <div style="color: rgb(101, 119, 134)">
-                      @${tweet.user.screen_name}
-                    </div>
-                  </div>
-                  <div class="tweet-text">${tweet.text}</div>
-                </div>
+          <div class="d-flex px-3 py-2 justify-content-between">
+            <div class="d-flex">
+              <div class="picture-wrapper">
+                <b-avatar
+                  class="mr-2"
+                  :src="tweet.user.profile_image_url"
+                ></b-avatar>
               </div>
-              <div class="select-wrapper d-flex align-items-center pl-4">
-                <div
-                  class="px-2 py-1 checkboxes"
-                  @click="toggleSelection(tweet, page.selected_tweets)"
-                  style="border-radius: 7px; cursor: pointer"
-                  :style="{
-                    backgroundColor:
-                      page.selected_tweets.indexOf(tweet) != -1
-                        ? 'rgb(22, 159, 242)'
-                        : 'rgb(101, 119, 134)',
-                  }"
-                >
-                  <div style="width: 13px">
-                    ${page.selected_tweets.indexOf(tweet) != -1 ? "✔" : "✘"}
+              <div class="content-wrapper d-flex flex-column">
+                <div class="d-flex flex-wrap">
+                  <div class="mr-1">
+                    <strong>${tweet.user.name}</strong>
+                  </div>
+                  <div style="color: rgb(101, 119, 134)">
+                    @${tweet.user.screen_name}
                   </div>
                 </div>
+                <div class="tweet-text">${tweet.text}</div>
               </div>
             </div>
           </div>
@@ -204,6 +174,12 @@
             v-model="page_copy.search_parameters.replies"
             >Risposte
           </b-form-checkbox>
+          <b-form-checkbox
+            class="popover_item"
+            @input="onInput()"
+            v-model="page_copy.search_parameters.only_geolocated"
+            >Solo geolocalizzati
+          </b-form-checkbox>
           <label for="input-utente">Utente</label>
           <b-form-input
             class="search-input"
@@ -251,6 +227,96 @@
         </div>
       </template>
     </b-popover>
+
+    <!-- Send mail popup -->
+    <b-popover
+      target="send-mail-activator"
+      triggers="click blur"
+      placement="topright"
+      class="popover"
+      ref="popover"
+    >
+      <template #default>
+        <div v-if="!valid_mail">
+          Inserisci una mail valida per ricevere aggironamenti
+        </div>
+        <div v-else class="d-flex flex-column mb-2 mx-1">
+          <div>Notificami nuovi risultati ogni</div>
+          <div class="my-3 d-flex justify-content-around align-items-center">
+            <b-form-input
+              class="search-input"
+              type="number"
+              :disabled="page_copy.search_parameters.mail.active"
+              @input="onInput()"
+              v-model="page_copy.search_parameters.mail.hours"
+              style="width: 80px"
+            ></b-form-input>
+            <div class="mx-2">ore</div>
+            <b-form-input
+              class="search-input"
+              type="number"
+              :disabled="page_copy.search_parameters.mail.active"
+              @input="onInput()"
+              v-model="page_copy.search_parameters.mail.mins"
+              style="width: 80px"
+            ></b-form-input>
+            <div class="ml-2">minuti</div>
+          </div>
+          <b-button
+            class="align-self-center"
+            style="width: 100%"
+            @click="toggleMail()"
+            >${page_copy.search_parameters.mail.active ? "Disattiva" :
+            "Attiva"}</b-button
+          >
+        </div>
+      </template>
+    </b-popover>
+
+    <!-- Share search popup -->
+    <b-popover
+      target="share-search-activator"
+      triggers="click blur"
+      placement="topright"
+      class="popover"
+      ref="popover"
+    >
+      <template #default>
+        <div v-if="!user">Connetti il tuo profilo per condividere i dati</div>
+        <div v-else class="d-flex flex-column mb-2 mx-1">
+          <div>Condividi i dati su Twitter ogni</div>
+          <div class="my-3 d-flex justify-content-around align-items-center">
+            <b-form-input
+              class="search-input"
+              id="hours"
+              type="number"
+              :disabled="page_copy.search_parameters.share.active"
+              @input="onInput()"
+              v-model="page_copy.search_parameters.share.hours"
+              style="width: 80px"
+            ></b-form-input>
+            <div class="mx-2">ore</div>
+            <b-form-input
+              class="search-input"
+              id="minutes"
+              type="number"
+              :disabled="page_copy.search_parameters.share.active"
+              @input="onInput()"
+              v-model="page_copy.search_parameters.share.mins"
+              style="width: 80px"
+            ></b-form-input>
+            <div class="ml-2">minuti</div>
+          </div>
+          <b-button
+            class="align-self-center"
+            style="width: 100%"
+            @click="toggleShare()"
+            >${page_copy.search_parameters.share.active ? "Disattiva" :
+            "Attiva"}</b-button
+          >
+        </div>
+      </template>
+    </b-popover>
   </div>
 </template>
 
@@ -261,10 +327,16 @@ module.exports = {
     return {
       loaded_files: [],
       page_copy: null,
+      socket: null,
+      stream_connection_open: false,
+      changing_stream_query: false,
     };
   },
   props: {
     page: Object,
+    user: Object,
+    valid_mail: Boolean,
+    newsearch: Boolean,
   },
   computed: {
     /* Media della ricerca attuale */
@@ -284,12 +356,31 @@ module.exports = {
     },
   },
   methods: {
+    toggleMail() {
+      this.page_copy.search_parameters.mail.active = !this.page_copy
+        .search_parameters.mail.active;
+      this.onInput();
+      this.$emit("toggle-mail", this.page);
+    },
+    toggleShare() {
+      this.page_copy.search_parameters.share.active = !this.page_copy
+        .search_parameters.share.active;
+      this.onInput();
+      this.$emit("toggle-share", this.page);
+    },
     search() {
       /* Salvo la pagina in una variabile per tenerne
       traccia nel caso prima che la ricerca finisca
       viene cambiata pagina */
+      this.$emit("recent-search-started");
       let page = this.page;
       let params = this.page.search_parameters;
+      if (params.stream) {
+        this.oldapi = false;
+        this.streamTweets(params.keywords);
+        return;
+      }
+      this.oldapi = true;
       let url =
         "search/?keywords=" +
         encodeURIComponent(params.keywords) +
@@ -297,6 +388,8 @@ module.exports = {
         encodeURIComponent(params.retweets) +
         "&replies=" +
         encodeURIComponent(params.replies) +
+        "&only_geolocated=" +
+        encodeURIComponent(params.only_geolocated) +
         "&user=" +
         encodeURIComponent(params.user) +
         "&location=" +
@@ -317,59 +410,89 @@ module.exports = {
         });
     },
     streamTweets(keywords) {
-      this.active_page.tweets = [];
-      this.active_page.matching_rules = [];
-      this.active_page.includes = [];
+      let vue = this;
+      this.$emit("recent-search-started");
+      let page = this.page;
+      page.name = keywords;
+      page.tweets = [];
+      page.matching_rules = [];
+      page.includes = [];
+      params = page.search_parameters;
+      keywords = this.getStreamQuery(keywords, params);
+      console.log("Search keywords: " + keywords);
 
-      params = this.active_page.search_parameters;
+      // Send keywords into websocket connection
+      if (!this.stream_connection_open) {
+        console.log("Prima ricerca stream");
+        this.stream_connection_open = true;
+        this.socket = new WebSocket(
+          "ws://" + window.location.hostname + ":5000"
+        );
+        this.socket.onopen = () => this.socket.send(keywords);
+      } else {
+        console.log("Ricerca stream dopo la prima");
+        this.socket.send(keywords);
+        this.changing_stream_query = true;
+      }
+
+      // Update page on tweet received from streaming
+      this.socket.addEventListener("message", function (event) {
+        if (!page.search_parameters.stream) return;
+
+        let tweet = vue.adjustTweetFormat(JSON.parse(event.data));
+        /*if (vue.changing_stream_query) {
+          console.log('Sto cambiando. Regola di questo tweet: ', tweet.matching_rules[0].id) // TODO per fermare la visualizzazione dello stream appena cambio la query dello streaming, fino a che non arriva qualcosa secondo le nuove regoleif (this.changing_stream_query) {
+          var page_rules = JSON.parse(JSON.stringify(page.matching_rules)); // TODO non serve tutta la pagina, quando sono sicuro al 100% che funziona prendi solo il primo elemento (ultima regola in ordine temporale)
+          console.log('Vecchia regola: ', page_rules, page_rules[0]);
+          let tweet_with_new_rule_found = (tweet.matching_rules[0].id != page_rules[0])
+          if (tweet_with_new_rule_found){
+            this.changing_stream_query = false;
+            console.log('OK, new/old rule: ', tweet.matching_rules[0].id, page.matching_rules[0]);  
+          }
+          else {
+            console.log('NON OK, new/old rule: ', tweet.matching_rules[0].id, page.matching_rules[0]);
+            return;
+          }
+        }*/
+        vue.$emit("stream-found", tweet);
+        page.tweets.unshift(tweet);
+        page.matching_rules.unshift(tweet.matching_rules[0].id);
+
+        if (page.tweets.length > 100) {
+          vue.$emit("stream-delete", page.tweets.pop());
+          page.matching_rules.pop();
+        }
+      });
+    },
+    getStreamQuery(keywords, params) {
       keywords =
         keywords +
         (params.retweets ? " " : " -is:retweet") +
         (params.replies ? " " : " -is:reply") +
         (params.user == "" ? " " : " from:" + params.user) +
         (params.hashtag == "" ? " " : " #" + params.hashtag) +
-        (params.tag == "" ? " " : " @" + params.tag);
-      console.log("Search keywords: " + keywords);
+        (params.tag == "" ? " " : " @" + params.tag) +
+        (params.only_geolocated ? " -is:geo" : "");
+      return keywords;
+    },
+    adjustTweetFormat(tweet) {
+      tweet.data.id_str = tweet.data.id;
+      tweet.data.user = tweet.includes.users[0];
+      tweet.data.user.screen_name = tweet.data.user.username;
+      tweet.data.places = tweet.includes.places;
+      tweet.data.matching_rules = tweet.matching_rules;
 
-      // Send keywords into websocket connection
-      if (!this.stream_connection_open) {
-        this.stream_connection_open = true;
-        this.socket = new WebSocket("ws://localhost:5000");
-        this.socket.onopen = () => this.socket.send(keywords);
-      } else {
-        this.socket.send(keywords);
-        this.changing_stream_query = true;
+      if (tweet.includes.media) {
+        tweet.data.extended_entities = {};
+        tweet.data.extended_entities.media = tweet.includes.media.map(function (
+          media
+        ) {
+          media.media_url = media.url;
+          delete media.url;
+          return media;
+        });
       }
-      // Update page on tweet received from streaming
-      this.socket.addEventListener("message", function (event) {
-        /*console.log('nuovo tweet con: ', JSON.parse(event.data).matching_rules[0].id) // TODO per fermare la visualizzazione dello stream appena cambio la query dello streaming, fino a che non arriva qualcosa secondo le nuove regole
-                if (vm.changing_stream_query) {
-                    console.log('sto cambiando');
-                    var x = JSON.parse(JSON.stringify(vm.active_page.matching_rules));
-                    console.log('vecchio: ', x, x[0]);
-                    if (JSON.parse(event.data).matching_rules[0].id == x[0]){ 
-                        console.log('non va bene, new/old: ', JSON.parse(event.data).matching_rules[0].id, vm.active_page.matching_rules[0]);
-                        return;
-                    }
-                    else {
-                        vm.changing_stream_query = false;
-                        console.log('va bene, new/old: ', JSON.parse(event.data).matching_rules[0].id, vm.active_page.matching_rules[0]);
-                    }
-                } else {*/
-        if (!vm.active_page.search_parameters.stream) return;
-        let tweet = JSON.parse(event.data);
-        vm.active_page.tweets.unshift(tweet.data);
-        vm.active_page.includes.unshift(tweet.includes);
-        vm.active_page.matching_rules.unshift(tweet.matching_rules[0].id);
-
-        if (vm.active_page.tweets.length > 100) {
-          vm.active_page.tweets.pop();
-          vm.active_page.includes.pop();
-          vm.active_page.matching_rules.pop();
-        }
-
-        //}
-      });
+      return tweet.data;
     },
     /* Mostra nel pannello il tweet corrispondente a "tweet_id" */
     showTweet(tweet_id) {
@@ -410,13 +533,6 @@ module.exports = {
             tweet_wrapper.removeChild(tweet_wrapper.firstChild);
             tweet_wrapper.firstChild.style["display"] = "block";
           });
-      }
-    },
-    toggleSelection(object, array) {
-      if (array.indexOf(object) != -1) {
-        array.splice(array.indexOf(object), 1);
-      } else {
-        array.push(object);
       }
     },
     /* Scarica un file JSON di 'page' */
@@ -463,10 +579,6 @@ module.exports = {
         window.alert("Inserire un file da caricare");
       }
     },
-    /* Mostra la finestra di ricerca avanzata */
-    showAdvancedSearchPopover() {
-      this.$refs.popover.$emit("open");
-    },
     openFileSelector() {
       document.getElementById("upload-form-file").click();
     },
@@ -492,6 +604,12 @@ module.exports = {
     /* When prop is updated, the value is stored into the copy */
     page(new_value) {
       this.page_copy = new_value;
+    },
+    newsearch(new_value) {
+      if (new_value) {
+        this.search();
+        this.$emit("search-done");
+      }
     },
   },
   created: function () {
@@ -569,13 +687,6 @@ module.exports = {
   color: white;
 }
 
-.search-container {
-  width: calc((100vw - var(--sidebar-width)) / 2);
-  height: calc(100vh - var(--pagesbar-height) - var(--searchbar-height));
-  border-right: rgb(56, 68, 77) 1px solid;
-  box-sizing: border-box;
-}
-
 .selection-bar {
   height: var(--searchbar-height);
   width: calc((100vw - var(--sidebar-width)) / 2);
@@ -585,10 +696,9 @@ module.exports = {
 
 .search-tweets-container {
   width: calc((100vw - var(--sidebar-width)) / 2);
-  height: calc(
-    100vh - var(--pagesbar-height) - var(--searchbar-height) -
-      var(--searchbar-height)
-  );
+  height: calc(100vh - var(--pagesbar-height) - var(--searchbar-height));
+  border-right: rgb(56, 68, 77) 1px solid;
+  box-sizing: border-box;
   overflow-y: auto;
 }
 
