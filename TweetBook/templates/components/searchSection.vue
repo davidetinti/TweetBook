@@ -6,6 +6,7 @@
         <b-button
           class="advanced-search-button ml-4 mr-2"
           id="advanced-filter-activator"
+          @click="map_popover_open = false"
         >
           <em class="fas fa-sliders-h"></em>
         </b-button>
@@ -27,6 +28,14 @@
           @click="search()"
         >
           <em class="fas fa-search"></em>
+        </b-button>
+
+        <b-button
+          v-show="stream_connection_open"
+          variant="danger"
+          @click="closeStreamConnection()"
+        >
+          Ferma streaming
         </b-button>
       </div>
       <div class="d-flex align-items-center">
@@ -153,32 +162,38 @@
       <template #title>
         <h3 class="mx-1 mt-1" style="color: white">Ricerca avanzata</h3>
       </template>
-      <template #default>
+      <div class="d-flex">
         <div class="d-flex flex-column mb-2 mx-1">
           <b-form-checkbox
+            id="stream-checkbox"
             class="popover_item"
             @input="onInput()"
             v-model="page_copy.search_parameters.stream"
-            >Ricerca in streaming
+            :disabled="currently_streaming"
+          >
+            Ricerca in streaming
           </b-form-checkbox>
           <div style="color: white; font-size: large">Includi</div>
           <b-form-checkbox
             class="popover_item"
             @input="onInput()"
             v-model="page_copy.search_parameters.retweets"
-            >Retweet
+          >
+            Retweet
           </b-form-checkbox>
           <b-form-checkbox
             class="popover_item"
             @input="onInput()"
             v-model="page_copy.search_parameters.replies"
-            >Risposte
+          >
+            Risposte
           </b-form-checkbox>
           <b-form-checkbox
             class="popover_item"
             @input="onInput()"
             v-model="page_copy.search_parameters.only_geolocated"
-            >Solo geolocalizzati
+          >
+            Solo geolocalizzati
           </b-form-checkbox>
           <label for="input-utente">Utente</label>
           <b-form-input
@@ -191,7 +206,10 @@
             @input="onInput()"
             v-model="page_copy.search_parameters.user"
           ></b-form-input>
-          <label for="input-luogo">Luogo</label>
+          <label for="input-luogo"
+            >Luogo
+            <em @click="openDrawMap" class="fas fa-drafting-compass"></em>
+          </label>
           <b-form-input
             class="search-input"
             size="sm"
@@ -225,7 +243,8 @@
             v-model="page_copy.search_parameters.tag"
           ></b-form-input>
         </div>
-      </template>
+        <div id="search-map" style="width: 0px"></div>
+      </div>
     </b-popover>
 
     <!-- Send mail popup -->
@@ -236,41 +255,39 @@
       class="popover"
       ref="popover"
     >
-      <template #default>
-        <div v-if="!valid_mail">
-          Inserisci una mail valida per ricevere aggironamenti
+      <div v-if="!valid_mail">
+        Inserisci una mail valida per ricevere aggironamenti
+      </div>
+      <div v-else class="d-flex flex-column mb-2 mx-1">
+        <div>Notificami nuovi risultati ogni</div>
+        <div class="my-3 d-flex justify-content-around align-items-center">
+          <b-form-select
+            class="search-input"
+            :options="hour_options"
+            :disabled="page_copy.search_parameters.mail.active"
+            @input="onInput()"
+            v-model="page_copy.search_parameters.mail.hours"
+            style="width: 80px"
+          ></b-form-select>
+          <div class="mx-2">ore</div>
+          <b-form-select
+            class="search-input"
+            :options="min_options"
+            :disabled="page_copy.search_parameters.mail.active"
+            @input="onInput()"
+            v-model="page_copy.search_parameters.mail.mins"
+            style="width: 80px"
+          ></b-form-select>
+          <div class="ml-2">minuti</div>
         </div>
-        <div v-else class="d-flex flex-column mb-2 mx-1">
-          <div>Notificami nuovi risultati ogni</div>
-          <div class="my-3 d-flex justify-content-around align-items-center">
-            <b-form-input
-              class="search-input"
-              type="number"
-              :disabled="page_copy.search_parameters.mail.active"
-              @input="onInput()"
-              v-model="page_copy.search_parameters.mail.hours"
-              style="width: 80px"
-            ></b-form-input>
-            <div class="mx-2">ore</div>
-            <b-form-input
-              class="search-input"
-              type="number"
-              :disabled="page_copy.search_parameters.mail.active"
-              @input="onInput()"
-              v-model="page_copy.search_parameters.mail.mins"
-              style="width: 80px"
-            ></b-form-input>
-            <div class="ml-2">minuti</div>
-          </div>
-          <b-button
-            class="align-self-center"
-            style="width: 100%"
-            @click="toggleMail()"
-            >${page_copy.search_parameters.mail.active ? "Disattiva" :
-            "Attiva"}</b-button
-          >
-        </div>
-      </template>
+        <b-button
+          class="align-self-center"
+          style="width: 100%"
+          @click="toggleMail()"
+        >
+          ${page_copy.search_parameters.mail.active ? "Disattiva" : "Attiva"}
+        </b-button>
+      </div>
     </b-popover>
 
     <!-- Share search popup -->
@@ -281,41 +298,39 @@
       class="popover"
       ref="popover"
     >
-      <template #default>
-        <div v-if="!user">Connetti il tuo profilo per condividere i dati</div>
-        <div v-else class="d-flex flex-column mb-2 mx-1">
-          <div>Condividi i dati su Twitter ogni</div>
-          <div class="my-3 d-flex justify-content-around align-items-center">
-            <b-form-input
-              class="search-input"
-              id="hours"
-              type="number"
-              :disabled="page_copy.search_parameters.share.active"
-              @input="onInput()"
-              v-model="page_copy.search_parameters.share.hours"
-              style="width: 80px"
-            ></b-form-input>
-            <div class="mx-2">ore</div>
-            <b-form-input
-              class="search-input"
-              id="minutes"
-              type="number"
-              :disabled="page_copy.search_parameters.share.active"
-              @input="onInput()"
-              v-model="page_copy.search_parameters.share.mins"
-              style="width: 80px"
-            ></b-form-input>
-            <div class="ml-2">minuti</div>
-          </div>
-          <b-button
-            class="align-self-center"
-            style="width: 100%"
-            @click="toggleShare()"
-            >${page_copy.search_parameters.share.active ? "Disattiva" :
-            "Attiva"}</b-button
-          >
+      <div v-if="!user">Connetti il tuo profilo per condividere i dati</div>
+      <div v-else class="d-flex flex-column mb-2 mx-1">
+        <div>Condividi i dati su Twitter ogni</div>
+        <div class="my-3 d-flex justify-content-around align-items-center">
+          <b-form-select
+            class="search-input"
+            id="hours"
+            :disabled="page_copy.search_parameters.share.active"
+            @input="onInput()"
+            :options="hour_options"
+            v-model="page_copy.search_parameters.share.hours"
+            style="width: 80px"
+          ></b-form-select>
+          <div class="mx-2">ore</div>
+          <b-form-select
+            class="search-input"
+            id="minutes"
+            :disabled="page_copy.search_parameters.share.active"
+            @input="onInput()"
+            :options="min_options"
+            v-model="page_copy.search_parameters.share.mins"
+            style="width: 80px"
+          ></b-form-select>
+          <div class="ml-2">minuti</div>
         </div>
-      </template>
+        <b-button
+          class="align-self-center"
+          style="width: 100%"
+          @click="toggleShare()"
+        >
+          ${page_copy.search_parameters.share.active ? "Disattiva" : "Attiva"}
+        </b-button>
+      </div>
     </b-popover>
   </div>
 </template>
@@ -330,6 +345,37 @@ module.exports = {
       socket: null,
       stream_connection_open: false,
       changing_stream_query: false,
+      min_options: [0,1,2,3,4,5,10,15,20,30,45],
+      hour_options: [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+      ],
+      map: null,
+      map_circle: null,
+      drawing_manager: null,
+      map_popover_open: false,
     };
   },
   props: {
@@ -337,6 +383,19 @@ module.exports = {
     user: Object,
     valid_mail: Boolean,
     newsearch: Boolean,
+  },
+  mounted: function () {
+    let input = document.getElementById("search-input-id");
+    input.addEventListener("keyup", function (event) {
+      if (event.keyCode === 13 || event.key === 13) {
+        try {
+          event.preventDefault();
+        } catch (error) {
+          console.error("Prevent default error: " + error);
+        }
+        document.getElementById("search-button-id").click();
+      }
+    });
   },
   computed: {
     /* Media della ricerca attuale */
@@ -354,66 +413,160 @@ module.exports = {
       });
       return array;
     },
+    currently_streaming: function () {
+      return (
+        this.stream_connection_open && this.page_copy.search_parameters.stream
+      );
+    },
   },
   methods: {
+    openDrawMap() {
+      if(this.map_popover_open){
+        this.map_popover_open = false;
+        document.getElementById("search-map").style.width = "0px";
+      }else{
+        this.map_popover_open = true;
+        document.getElementById("search-map").style.width = "300px";
+      } 
+      
+      let element = document.getElementById("search-map");
+      let center = {
+        lat: 44.456348,
+        lng: 11.574575,
+      };
+
+      this.map = new google.maps.Map(element, {
+        zoom: 4,
+        center: center,
+        mapTypeControl: false,
+
+        fullscreenControl: false,
+        streetViewControl: false,
+        mapTypeId: "satellite",
+      });
+      console.log(this.map)
+      this.initDrawingManager();
+      google.maps.event.addListener(this.drawing_manager, 'circlecomplete', this.updateCircle);
+    },
+    initDrawingManager() {
+      this.drawing_manager = new google.maps.drawing.DrawingManager({
+        drawingMode: google.maps.drawing.OverlayType.MARKER,
+        drawingControl: true,
+        drawingControlOptions: {
+          position: google.maps.ControlPosition.TOP_CENTER,
+          drawingModes: [
+            //google.maps.drawing.OverlayType.MARKER,
+            google.maps.drawing.OverlayType.CIRCLE,
+          ],
+        },
+        markerOptions: {
+          icon:
+            "https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png",
+        },
+        circleOptions: {
+          fillColor: "#00ff00",
+          strokeColor: "#56d800",
+          clickable: false,
+          editable: true,
+          zIndex: 1,
+        },
+      });
+      this.drawing_manager.setMap(this.map);
+      
+    },
+    updateCircle(circle) {
+      if (this.map_circle) this.map_circle.setMap(null);
+      this.map_circle = null;
+      this.map_circle = circle;
+      this.page.search_parameters.location =
+          `${circle.center.lat()},${circle.center.lng()},${circle.radius/1000}km`;
+    },
     toggleMail() {
-      this.page_copy.search_parameters.mail.active = !this.page_copy
-        .search_parameters.mail.active;
-      this.onInput();
-      this.$emit("toggle-mail", this.page);
+      if (
+        this.page_copy.search_parameters.mail.hours ||
+        this.page_copy.search_parameters.mail.mins
+      ) {
+        this.page_copy.search_parameters.mail.active = !this.page_copy
+          .search_parameters.mail.active;
+        this.onInput();
+        this.$emit("toggle-mail", this.page);
+      }
     },
     toggleShare() {
-      this.page_copy.search_parameters.share.active = !this.page_copy
-        .search_parameters.share.active;
-      this.onInput();
-      this.$emit("toggle-share", this.page);
+      if (
+        this.page_copy.search_parameters.share.hours ||
+        this.page_copy.search_parameters.share.mins
+      ) {
+        this.page_copy.search_parameters.share.active = !this.page_copy
+          .search_parameters.share.active;
+        this.onInput();
+        this.$emit("toggle-share", this.page);
+      }
     },
     search() {
-      /* Salvo la pagina in una variabile per tenerne
-      traccia nel caso prima che la ricerca finisca
-      viene cambiata pagina */
-      this.$emit("recent-search-started");
+      /* Salvo la pagina in una variabile per tenerne	
+                traccia nel caso prima che la ricerca finisca	
+                viene cambiata pagina */
       let page = this.page;
       let params = this.page.search_parameters;
-      if (params.stream) {
-        this.oldapi = false;
-        this.streamTweets(params.keywords);
-        return;
+      let parameters = this.getPageName(
+        params.keywords,
+        params.user,
+        params.location,
+        params.hashtag,
+        params.tag
+      );
+      if (parameters !== "") {
+        this.$emit("recent-search-started");
+        if (params.stream) {
+          this.oldapi = false;
+          this.streamTweets(params.keywords);
+          return;
+        }
+        this.oldapi = true;
+        let url =
+          "search/?keywords=" +
+          encodeURIComponent(params.keywords) +
+          "&retweets=" +
+          encodeURIComponent(params.retweets) +
+          "&replies=" +
+          encodeURIComponent(params.replies) +
+          "&only_geolocated=" +
+          encodeURIComponent(params.only_geolocated) +
+          "&user=" +
+          encodeURIComponent(params.user) +
+          "&location=" +
+          encodeURIComponent(params.location) +
+          "&hashtag=" +
+          encodeURIComponent(params.hashtag) +
+          "&tag=" +
+          encodeURIComponent(params.tag);
+        fetch(url)
+          .then((response) => response.json())
+          .then((data) => {
+            page.tweets = data.statuses;
+            page.name = parameters;
+            this.$emit("recent-search-done", page);
+            /* DEBUG */
+            console.log("Data:");
+            console.log(data);
+          });
+      } else {
+        window.alert("Inserisci almeno un parametro valido di ricerca.");
       }
-      this.oldapi = true;
-      let url =
-        "search/?keywords=" +
-        encodeURIComponent(params.keywords) +
-        "&retweets=" +
-        encodeURIComponent(params.retweets) +
-        "&replies=" +
-        encodeURIComponent(params.replies) +
-        "&only_geolocated=" +
-        encodeURIComponent(params.only_geolocated) +
-        "&user=" +
-        encodeURIComponent(params.user) +
-        "&location=" +
-        encodeURIComponent(params.location) +
-        "&hashtag=" +
-        encodeURIComponent(params.hashtag) +
-        "&tag=" +
-        encodeURIComponent(params.tag);
-      fetch(url)
-        .then((response) => response.json())
-        .then((data) => {
-          page.tweets = data.statuses;
-          page.name = params.keywords;
-          this.$emit("recent-search-done", page);
-          /* DEBUG */
-          console.log("Data:");
-          console.log(data);
-        });
     },
     streamTweets(keywords) {
       let vue = this;
       this.$emit("recent-search-started");
       let page = this.page;
-      page.name = keywords;
+      let params = this.page.search_parameters;
+      page.name = this.getPageName(
+        params.keywords,
+        params.user,
+        params.location,
+        params.hashtag,
+        params.tag
+      );
       page.tweets = [];
       page.matching_rules = [];
       page.includes = [];
@@ -431,6 +584,7 @@ module.exports = {
         this.socket.onopen = () => this.socket.send(keywords);
       } else {
         console.log("Ricerca stream dopo la prima");
+        page.tweets = [];
         this.socket.send(keywords);
         this.changing_stream_query = true;
       }
@@ -464,6 +618,15 @@ module.exports = {
         }
       });
     },
+    getPageName(keywords, utente, luogo, hashtag, tag) {
+      let name = "";
+      if (keywords !== "") name = keywords;
+      else if (hashtag !== "") name = hashtag;
+      else if (tag !== "") name = tag;
+      else if (utente !== "") name = utente;
+      else if (luogo !== "") name = luogo;
+      return name;
+    },
     getStreamQuery(keywords, params) {
       keywords =
         keywords +
@@ -472,10 +635,13 @@ module.exports = {
         (params.user == "" ? " " : " from:" + params.user) +
         (params.hashtag == "" ? " " : " #" + params.hashtag) +
         (params.tag == "" ? " " : " @" + params.tag) +
-        (params.only_geolocated ? " -is:geo" : "");
+        " !EXTRA_TAG!" +
+        (params.only_geolocated ? " -is:geo" : "") +
+        (params.location == "" ? " " : " location:" + params.location);
       return keywords;
     },
     adjustTweetFormat(tweet) {
+      console.log(tweet);
       tweet.data.id_str = tweet.data.id;
       tweet.data.user = tweet.includes.users[0];
       tweet.data.user.screen_name = tweet.data.user.username;
@@ -484,10 +650,8 @@ module.exports = {
 
       if (tweet.includes.media) {
         tweet.data.extended_entities = {};
-        tweet.data.extended_entities.media = tweet.includes.media.map(function (
-          media
-        ) {
-          media.media_url = media.url;
+        tweet.data.extended_entities.media = tweet.includes.media.map(function (media) {
+          media.media_url = media.url ? media.url : media.preview_image_url
           delete media.url;
           return media;
         });
@@ -599,6 +763,13 @@ module.exports = {
       }
       this.loaded_files = [];
     },
+    closeStreamConnection() {
+      if (this.socket) {
+        console.log("Connessione in streaming chiusa (era aperta)");
+        this.stream_connection_open = false;
+        this.socket.close();
+      }
+    },
   },
   watch: {
     /* When prop is updated, the value is stored into the copy */
@@ -614,6 +785,8 @@ module.exports = {
   },
   created: function () {
     this.page_copy = this.page;
+    // Close websocket when webpage closes
+    window.addEventListener("unload", this.closeStreamConnection);
   },
 };
 </script>
@@ -767,6 +940,10 @@ module.exports = {
 
 .tweet-text {
   line-height: 1.3125;
+}
+
+.popover {
+  max-width: 600px;
 }
 
 .tweet-lookup-wrapper {

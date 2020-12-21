@@ -7,7 +7,7 @@ docker-compose build
 echo "Server costruito."
 # Avvio il server
 docker-compose up &
-sleep 5
+sleep 45
 echo "Server avviato."
 # Riprendo il processo in background
 docker-compose restart

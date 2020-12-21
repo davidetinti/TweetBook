@@ -14,10 +14,10 @@ import traceback
 import smtplib
 
 # Twitter OAuth parameters
-bearer_token = "AAAAAAAAAAAAAAAAAAAAAMzfIgEAAAAAcYcSaUQX0eaJxXBw5SERUTyD610%3D1pKF18xmAtUPj7WBft8SOEjKvFerNUL5HXXyftdckFFYX5oi0K"
-consumer_key = "tL4vposmnfl9yXP3ea8AFx6si"
-consumer_secret = "dsxs9SGNCFWPr4cSxNEeUUGUgOSyaoA7vB2kq0dUo97ENaznvq"
-login_redirect_url = "http://128.116.169.110:8000/home/loginDone/"
+bearer_token = "YOUR_BEARER_TOKEN"
+consumer_key = "YOUR_CONSUMER_KEY"
+consumer_secret = "YOUR_CONSUMER_SECRET"
+login_redirect_url = "YOUR_REDIRECT_URL"
 
 # Render main page
 
@@ -31,83 +31,68 @@ def index(request):
 def component(request, name):
     return render(request, "components/" + name)
 
-
-def search(request):
+def compose_search_url(request):
     keywords = urllib.parse.quote(request.GET.get("keywords"))
     retweets = request.GET.get("retweets") == "true"
     replies = request.GET.get("replies") == "true"
-    only_geolocated = request.GET.get("only_geolocated") == "true"
     user = urllib.parse.quote(request.GET.get("user"))
     location = request.GET.get("location")
     hashtag = urllib.parse.quote(request.GET.get("hashtag"))
     tag = urllib.parse.quote(request.GET.get("tag"))
-
-    url1 = (
+    
+    url = (
         "https://api.twitter.com/1.1/search/tweets.json?"
         + "result_type=recent&count=100&q="
         + ("" if (keywords == "") else keywords)
-        + ("" if (user == "") else "+from:" + user)
-        + ("" if (hashtag == "") else "+%23" + hashtag)
-        + ("" if (tag == "") else "+@" + tag)
-        + ("" if (retweets) else "+-filter:retweets")
-        + ("" if (replies) else "+-filter:replies")
-        + ("" if (location == "") else "+&geocode=" + location)
-    )
-
-    url2 = (
-        "https://api.twitter.com/2/tweets/search/recent?"
-        + "expansions=attachments.media_keys,author_id,geo.place_id"
-        + "&tweet.fields=attachments,author_id,created_at,conversation_id,entities,geo,lang"
-        + "&media.fields=preview_image_url,url"
-        + "&user.fields=profile_image_url"
-        + "&place.fields=contained_within,country,country_code,geo,name,place_type"
-        + "&max_results=100&query="
-        + ("" if (keywords == "") else keywords)
         + ("" if (user == "") else " from:" + user)
-        + ("" if (hashtag == "") else " #" + hashtag)
+        + ("" if (hashtag == "") else " %23" + hashtag)
         + ("" if (tag == "") else " @" + tag)
-        + ("" if (retweets) else " -is:retweet")
-        + ("" if (replies) else " -is:reply")
-        # manca location
+        + ("" if (retweets) else " -filter:retweets")
+        + ("" if (replies) else " -filter:replies")
+        + ("" if (location == "") else " &geocode=" + location)
     )
+    return url
 
-    # decide se verrà utilizzata l'API 1.1 (url1) o 2.0 (url2)
-    url = url1
+def search(request):
+    only_geolocated = request.GET.get("only_geolocated") == "true"
 
-    print(url)
+    url = compose_search_url(request)
 
     headers = {"Authorization": "Bearer {}".format(bearer_token)}
     json_response = connect_to_endpoint(url, headers)
     if only_geolocated:
-        tweets_searched = {
-            "statuses": []
-        }
-
-        for index, tweet in enumerate(json_response["statuses"]):
-            if tweet["place"]:
-                if len(tweets_searched["statuses"]) < 100:
-                    tweets_searched["statuses"].append(tweet)
-
-        if len(tweets_searched["statuses"]) < 100 or not json_response["search_metadata"]["next_results"]:
-            new_url = "https://api.twitter.com/1.1/search/tweets.json" + \
-                json_response["search_metadata"]["next_results"]
-            search_new_tweets(tweets_searched["statuses"], new_url)
-        return JsonResponse(tweets_searched)
+        return JsonResponse(check_geo_tweets(json_response))
     else:
         return JsonResponse(json_response)
 
+def check_geo_tweets(initial_response):
+        final_response = {
+            "statuses": []
+        }
 
-def search_new_tweets(array, url):
+        for index, tweet in enumerate(initial_response["statuses"]):
+            if tweet["place"] and len(final_response["statuses"]) < 100:
+                final_response["statuses"].append(tweet)
+
+        if len(final_response["statuses"]) < 100 or not initial_response["search_metadata"]["next_results"]:
+            new_url = "https://api.twitter.com/1.1/search/tweets.json" + \
+                initial_response["search_metadata"]["next_results"]
+            final_response["statuses"] = get_more_geo_tweets(final_response["statuses"], new_url)
+        return final_response
+
+def get_more_geo_tweets(array, url):
     headers = {"Authorization": "Bearer {}".format(bearer_token)}
     new_tweets_found = connect_to_endpoint(url, headers)
+
     while len(array) < 100 and new_tweets_found["search_metadata"].get("next_results"):
         for index, tweet in enumerate(new_tweets_found["statuses"]):
-            if tweet["place"]:
-                if len(array) < 100:
-                    array.append(tweet)
+            if tweet["place"] and len(array) < 100:
+                array.append(tweet)
         url = "https://api.twitter.com/1.1/search/tweets.json" + \
             new_tweets_found["search_metadata"]["next_results"]
         new_tweets_found = connect_to_endpoint(url, headers)
+    
+    return array
 
 
 def connect_to_endpoint(url, headers):
@@ -164,11 +149,11 @@ def login_wait(request):
 def get_user_data(request):
     access_token = request.GET.get("access_token")
     access_token_secret = request.GET.get("access_token_secret")
-    api = getAPIInstance(access_token, access_token_secret)
+    api = get_api_instance(access_token, access_token_secret)
     return JsonResponse(api.me()._json)
 
 
-def getAPIInstance(access_token, access_token_secret):
+def get_api_instance(access_token, access_token_secret):
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
     api = tweepy.API(auth)
@@ -181,11 +166,13 @@ def post_status(request):
         access_token = request.GET.get("access_token")
         access_token_secret = request.GET.get("access_token_secret")
         map_url = request.GET.get("map_url")
-        message = "Guarda i risultati della mia ricerca su TweetBook #IngSw2020"
+        keyword = request.GET.get("keywords")
+        message = "Guarda i risultati della mia ricerca per " + \
+            keyword + " su TweetBook #IngSw2020"
         filename = "tmp.jpg"
 
         # get API instance
-        api = getAPIInstance(access_token, access_token_secret)
+        api = get_api_instance(access_token, access_token_secret)
 
         # fetch image from map_url
         request = requests.get(map_url, stream=True)
@@ -207,17 +194,16 @@ def post_status(request):
         return JsonResponse({"ok": False})
 
 
+gmail_user = 'GMAIL_ADDRESS'
+gmail_password = 'GMAIL_PASSWORD'
 
-
-gmail_user = 'tweetbooknotify@gmail.com'
-gmail_password = 'gruppo17swe'
 
 def notify(request):
     receiver = request.GET.get("mail")
     sent_from = gmail_user
     to = [receiver]
     subject = 'Nuovi risultati su TweetBook'
-    body = "Ciao"
+    body = "Ci sono nuovi risulati nella ricerca"
 
     email_text = """\
     From: %s

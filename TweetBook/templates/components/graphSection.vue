@@ -49,7 +49,10 @@ module.exports = {
       return obj;
     },
     is_streaming: function () {
-      return !(this.page.search_parameters.stream != true) && (this.page.tweets.length > 0);
+      return (
+        !(this.page.search_parameters.stream != true) &&
+        this.page.tweets.length > 0
+      );
     },
   },
   methods: {
@@ -64,15 +67,46 @@ module.exports = {
       );
     },
     updateGraphsData() {
-      console.log("ciao")
       this.resetGraphs();
       if (this.page.tweets.length != 0) {
         // Chart Bar
         for (let i = 0; i < this.page.tweets.length; i++) {
           var bool = false;
+          if (this.page.search_parameters.stream) {
+            if (this.page.tweets[i].places != null) {
+              if (this.page.tweets[i].places[0].name != null) {
+                if (this.chart_bar != null) {
+                  for (
+                    let j = 0;
+                    j < this.objLength(this.chart_bar.data);
+                    j++
+                  ) {
+                    if (
+                      this.page.tweets[i].places[0].name ==
+                      this.chart_bar.data[j].country
+                    ) {
+                      this.chart_bar.data[j].visits++;
+                      bool = true;
+                    }
+                  }
+                  if (!bool) {
+                    this.chart_bar.data.push({
+                      country: this.page.tweets[i].places[0].name,
+                      visits: 1,
+                    });
+                  }
+                } else {
+                  this.chart_bar.data.push({
+                    country: this.page.tweets[i].places[0].name,
+                    visits: 1,
+                  });
+                }
+              }
+            }
+          }
           if (this.page.tweets[i].place != null) {
             if (this.chart_bar != null) {
-              for (let j = 0; j < this.objLenght(this.chart_bar.data); j++) {
+              for (let j = 0; j < this.objLength(this.chart_bar.data); j++) {
                 if (
                   this.page.tweets[i].place.name ==
                   this.chart_bar.data[j].country
@@ -102,9 +136,16 @@ module.exports = {
         categoryAxis.dataFields.category = "country";
         categoryAxis.renderer.grid.template.location = 0;
         categoryAxis.renderer.minGridDistance = 30;
-        categoryAxis.renderer.labels.template.horizontalCenter = "middle";
-        categoryAxis.renderer.labels.template.verticalCenter = "right";
-        categoryAxis.renderer.labels.template.rotation = 0;
+        if (this.objLength(this.chart_bar.data) > 14) {
+          categoryAxis.renderer.labels.template.horizontalCenter = "right";
+          categoryAxis.renderer.labels.template.verticalCenter = "middle";
+          categoryAxis.renderer.labels.template.rotation = 270;
+        } else {
+          categoryAxis.renderer.labels.template.horizontalCenter = "middle";
+          categoryAxis.renderer.labels.template.verticalCenter = "right";
+          categoryAxis.renderer.labels.template.rotation = 0;
+        }
+
         categoryAxis.tooltip.disabled = true;
         categoryAxis.renderer.minHeight = 110;
         let valueAxis = this.chart_bar.yAxes.push(new am4charts.ValueAxis());
@@ -142,11 +183,7 @@ module.exports = {
 
           //colors
           let twitter_blue = "#169FF2";
-          let applycolor = true;
-          if (applycolor)
-            this.cloud_series.labels.template.fill = am4core.color(
-              twitter_blue
-            );
+          this.cloud_series.labels.template.fill = am4core.color(twitter_blue);
 
           //tooltips and events
           this.cloud_series.labels.template.tooltipText =
@@ -154,7 +191,6 @@ module.exports = {
           let parent = this;
           this.cloud_series.labels.template.events.on("hit", function (e) {
             parent.$emit("related-search", e);
-            console.log(e.target.dataItem.dataContext.word);
           });
         }
 
@@ -178,26 +214,25 @@ module.exports = {
     resetGraphs() {
       // Chart pie
       if (this.chart_pie.series.length) this.chart_pie.series.removeIndex(0);
-      document.getElementById("chart_pie").innerHTML = "";
-      this.chart_pie = null;
+      this.chart_pie.dispose();
       this.chart_pie = am4core.create("chart_pie", am4charts.PieChart);
 
       //Chart bar
       if (this.chart_bar.series.length) this.chart_bar.series.removeIndex(0);
       document.getElementById("chart_bar").innerHTML = "";
-      this.chart_bar = null;
+      this.chart_bar.dispose();
       this.chart_bar = am4core.create("chart_bar", am4charts.XYChart);
 
       //Chart cloud
       if (this.word_cloud.series.length) this.word_cloud.series.removeIndex(0);
       document.getElementById("word_cloud").innerHTML = "";
-      this.word_cloud = null;
+      this.word_cloud.dispose();
       this.word_cloud = am4core.create(
         "word_cloud",
         am4plugins_wordCloud.WordCloud
       );
     },
-    objLenght(obj) {
+    objLength(obj) {
       var l = 0;
       for (var x in obj) {
         if (obj.hasOwnProperty(x)) {
@@ -243,7 +278,9 @@ module.exports = {
     is_streaming(new_value) {
       if (new_value) {
         if (!this.refresh_interval)
-          this.refresh_interval = setInterval(() => {this.updateGraphsData()}, 30000);
+          this.refresh_interval = setInterval(() => {
+            this.updateGraphsData();
+          }, 30000);
       } else {
         clearInterval(this.refresh_interval);
         this.refresh_interval = null;

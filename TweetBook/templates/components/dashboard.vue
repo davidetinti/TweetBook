@@ -1,4 +1,4 @@
-    <template>
+<template>
   <div id="dashboard">
     <!-- Sidebar -->
     <sidebar
@@ -38,6 +38,7 @@
             :page="active_page"
             :to_insert="insert_into_map"
             @inserted="deleteMapInserted"
+            @remove-markers="removeMarkers"
           ></map-section>
           <graph-section
             v-show="active_section == sections[2]"
@@ -145,9 +146,9 @@ module.exports = {
       this.waiting_for_login = true;
       fetch("loginStart/?key=" + Date.now())
         .then((response) => response.json())
-        .then((data) => {
-          let twitter_login_url = data.url;
-          let login_session_key = data.key;
+        .then((login_data) => {
+          let twitter_login_url = login_data.url;
+          let login_session_key = login_data.key;
           if (twitter_login_url) {
             let width = Math.max(window.outerWidth * 0.5, 500);
             let height = Math.max(window.outerHeight * 0.8, 500);
@@ -173,16 +174,19 @@ module.exports = {
               "_blank",
               window_specs
             );
-            let _this = this;
             let interval = setInterval(() => {
               fetch("loginWait/?key=" + login_session_key)
                 .then((response) => response.json())
-                .then((data) => {
-                  if (data.done) {
-                    this.setCookie("access_token", data.access_token, 30);
+                .then((login_response_data) => {
+                  if (login_response_data.done) {
+                    this.setCookie(
+                      "access_token",
+                      login_response_data.access_token,
+                      30
+                    );
                     this.setCookie(
                       "access_token_secret",
-                      data.access_token_secret,
+                      login_response_data.access_token_secret,
                       30
                     );
                     this.fetchUserData();
@@ -285,17 +289,17 @@ module.exports = {
       //Secondo caso: rimuovo completamente un marker
       else if (page == null && element != null) {
         let indice = -1;
-        for (let i = 0; i < this.page.maps.poi.length; i++) {
+        for (let i = 0; i < this.active_page.maps.poi.length; i++) {
           if (
             element.infowindow.content ===
-            this.page.maps.poi[i].infowindow.content
+            this.active_page.maps.poi[i].infowindow.content
           )
             indice = i;
         }
         if (indice != -1) {
-          this.page.maps.poi[indice].infowindow.close();
-          this.page.maps.poi[indice].marker.setMap(null);
-          this.page.maps.poi.splice(indice, 1);
+          this.active_page.maps.poi[indice].infowindow.close();
+          this.active_page.maps.poi[indice].marker.setMap(null);
+          this.active_page.maps.poi.splice(indice, 1);
         }
       } else console.error("Remove error!");
     },
@@ -314,14 +318,15 @@ module.exports = {
       }
     },
     // setto l'intervallo
-    onMailNotify(page){
+    onMailNotify(page) {
       let index = this.pages.indexOf(page);
       let active = this.pages[index].search_parameters.mail.active;
       let hours = this.pages[index].search_parameters.mail.hours;
       let mins = this.pages[index].search_parameters.mail.mins;
-      let interval = this.pages[index].search_parameters.mail.interval;
       if (active) {
-        this.pages[index].last_mail_id = this.pages[index].tweets[0].id;
+        this.pages[index].last_mail_id = this.pages[index].tweets.length
+          ? this.pages[index].tweets[0].id
+          : null;
         this.pages[index].search_parameters.mail.interval = setInterval(() => {
           this.sendMail(index);
         }, (hours * 60 + mins) * 60 * 1000);
@@ -330,15 +335,19 @@ module.exports = {
       }
     },
     // l'intervallo scade
-    sendMail(index){
-      if (this.pages[index].last_mail_id != this.pages[index].tweets[0].id){
-        this.pages[index].last_mail_id = this.pages[index].tweets[0].id;
-        fetch("sendMail/?mail=" + this.mail)
-        .then((response) => response.json())
-          .then((data) => {
-            if (!data.ok)
-              clearInterval(this.pages[index].search_parameters.mail.interval);
-          });
+    sendMail(index) {
+      if (this.pages[index].tweets.length) {
+        if (this.pages[index].last_mail_id != this.pages[index].tweets[0].id) {
+          this.pages[index].last_mail_id = this.pages[index].tweets[0].id;
+          fetch("sendMail/?mail=" + this.mail)
+            .then((response) => response.json())
+            .then((data) => {
+              if (!data.ok)
+                clearInterval(
+                  this.pages[index].search_parameters.mail.interval
+                );
+            });
+        }
       }
     },
     onShareSearch(page) {
@@ -346,7 +355,6 @@ module.exports = {
       let active = this.pages[index].search_parameters.share.active;
       let hours = this.pages[index].search_parameters.share.hours;
       let mins = this.pages[index].search_parameters.share.mins;
-      let interval = this.pages[index].search_parameters.share.interval;
       if (active) {
         this.pages[index].search_parameters.share.interval = setInterval(() => {
           this.shareSearch(index);
@@ -356,8 +364,8 @@ module.exports = {
       }
     },
     deleteMapInserted(tweets) {
-      for (tweet of tweets) {
-        var index = this.insert_into_map.indexOf(tweet);
+      for (let tweet of tweets) {
+        let index = this.insert_into_map.indexOf(tweet);
         this.insert_into_map.splice(index, 1);
       }
     },
@@ -385,7 +393,9 @@ module.exports = {
             "&access_token_secret=" +
             access_token_secret +
             "&map_url=" +
-            map_url
+            map_url +
+            "&keywords=" +
+            encodeURIComponent(this.pages[index].name)
         )
           .then((response) => response.json())
           .then((data) => {
@@ -418,7 +428,7 @@ module.exports = {
         static_map_url += "zoom=" + page.maps.zoom;
       } else {
         //Loop and add Markers
-        static_map_url += "&markers=";
+        static_map_url += "&markers=icon:http://128.116.169.110/static/images/gps1.png";
         markers.forEach((marker) => {
           let object = this.getCoordinates(marker);
           static_map_url += "|" + object.lat + "," + object.lng;
@@ -490,83 +500,13 @@ module.exports = {
     graphSection: httpVueLoader("component/graphSection.vue"),
   },
   created: function () {
-    let vue = this;
     this.setActivePage(0);
     this.setActiveSection(0);
     this.graph_need_update = false;
-    // Close websocket when webpage closes
-    window.addEventListener("unload", function (event) {
-      if (vue.socket) {
-        window.open("http://www.google.com");
-        vue.socket.close();
-      }
-    });
   },
   mounted: function () {
     this.fetchUserData();
   },
-};
-
-window.onload = function () {
-  // Abilita la ricerca con la pressione del tasto invio
-  let input = document.getElementById("search-input-id");
-  input.addEventListener("keyup", function (event) {
-    if (event.keyCode === 13 || event.key === 13) {
-      try {
-        event.preventDefault();
-      } catch (error) {
-        console.error("Prevent default error: " + error);
-      }
-      document.getElementById("search-button-id").click();
-    }
-  });
-  // Rende la bottom page-bar scrollabile
-  let ele = document.getElementsByClassName("pages-wrapper")[0];
-  ele.style.cursor = "grab";
-
-  let pos = {
-    top: 0,
-    left: 0,
-    x: 0,
-    y: 0,
-  };
-
-  let mouseDownHandler = function (e) {
-    ele.style.cursor = "grabbing";
-    ele.style.userSelect = "none";
-
-    pos = {
-      left: ele.scrollLeft,
-      top: ele.scrollTop,
-      // Get the current mouse position
-      x: e.clientX,
-      y: e.clientY,
-    };
-
-    document.addEventListener("mousemove", mouseMoveHandler);
-    document.addEventListener("mouseup", mouseUpHandler);
-  };
-
-  let mouseMoveHandler = function (e) {
-    // How far the mouse has been moved
-    let dx = e.clientX - pos.x;
-    let dy = e.clientY - pos.y;
-
-    // Scroll the element
-    ele.scrollTop = pos.top - dy;
-    ele.scrollLeft = pos.left - dx;
-  };
-
-  let mouseUpHandler = function () {
-    ele.style.cursor = "grab";
-    ele.style.removeProperty("user-select");
-
-    document.removeEventListener("mousemove", mouseMoveHandler);
-    document.removeEventListener("mouseup", mouseUpHandler);
-  };
-
-  // Attach the handler
-  ele.addEventListener("mousedown", mouseDownHandler);
 };
 </script>
 
