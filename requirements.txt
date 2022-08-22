@@ -14,6 +14,6 @@ urllib3==1.25.11
 psycopg2-binary>=2.8
 django-easy-maps==1.1.2
 websockets==8.1
-Pillow==8.0.1
+Pillow==9.0.1
 PySocks==1.7.1
 tweepy==3.9.0
