@@ -9,7 +9,7 @@ python-twitter==3.5
 pytz==2020.1
 requests==2.24.0
 requests-oauthlib==1.3.0
-sqlparse==0.4.1
+sqlparse==0.4.4
 urllib3==1.25.11
 psycopg2-binary>=2.8
 django-easy-maps==1.1.2
